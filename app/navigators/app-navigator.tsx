@@ -29,13 +29,7 @@ const Stack = createSharedElementStackNavigator<RootStackParamList>()
 
 const AppStack = () => {
   return (
-    <Stack.Navigator
-      nitialRouteName={AppNavigationNames.HomeScreen}
-      screenOptions={{
-        headerShown: false,
-        headerTransparent: true,
-      }}
-    >
+    <Stack.Navigator nitialRouteName={AppNavigationNames.HomeScreen} screenOptions={{}}>
       <Stack.Screen
         name={AppNavigationNames.HomeScreen}
         component={HomeNavigator}
@@ -83,12 +77,10 @@ const AppStack = () => {
           const { section } = route.params
           return [section.data.uri]
         }}
-
       />
     </Stack.Navigator>
   )
 }
-
 
 type NavigationProps = Partial<React.ComponentProps<typeof NavigationContainer>>
 

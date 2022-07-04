@@ -4,9 +4,13 @@ import * as MediaLibrary from "expo-media-library"
 import { useRecoilState } from "recoil"
 
 import { AssetService } from "../../services"
+import { color } from "../../theme"
+import AssetList from "../../components/asset-list"
+import { useFloatHederAnimation } from "../../utils/hooks"
+import { palette } from "../../theme/palette"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { HomeNavigationParamList, HomeNavigationTypes } from "../../navigators/home-navigator"
-import { mediasState } from "../../store"
+import { mediasState, recyclerSectionsState } from "../../store"
 import { Assets } from "../../services/localdb"
 import { Entities } from "../../realmdb"
 import { AssetListScreen } from "../index"
@@ -19,6 +23,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const realmAssets = useRef<Realm.Results<Entities.AssetEntity & Realm.Object>>(null);
   const [medias, setMedias] = useRecoilState(mediasState)
   const [loading, setLoading] = useState(true)
+  const [recyclerSections, setRecyclerSections] = useRecoilState(recyclerSectionsState)
+  // Get a custom hook to animate the header
+  const [scrollY, headerStyles] = useFloatHederAnimation(60)
+
   const requestAndroidPermission = async () => {
     try {
       console.log("requestAndroidPermission")
@@ -85,12 +93,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       let lastAsset: MediaLibrary.Asset = null;
       let fitstAsset: MediaLibrary.Asset = null;
       do {
-        allMedias = await AssetService.getAssets(first, allMedias?.endCursor)
-        await Assets.addOrUpdate(allMedias.assets);
-        if (first === 20) {
-          //Get the first assets that is created
-          fitstAsset = (await AssetService.getAssets(1, null, [["modificationTime", true]]))?.assets?.[0];
-        }
+        allMedias = await AssetService.getMedias(first, allMedias?.endCursor)
+        assetsArray.push(...allMedias.assets)
+        setRecyclerSections([...AssetService.categorizeAssets(assetsArray)])
+        setMedias([...assetsArray])
+        console.log(
+          "allMedias",
+          assetsArray.length,
+          allMedias.assets.length,
+          allMedias.hasNextPage,
+          allMedias.endCursor,
+          assetsArray[assetsArray.length - 1]?.id,
+        )
+        if (!allMedias.hasNextPage) break
         first = first * 4
         lastAsset = allMedias.assets?.[allMedias.assets.length - 1];
 
@@ -104,6 +119,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   }
 
   return (
-    <AssetListScreen navigation={navigation} medias={isReady ? medias : null} loading={loading} />
+    <Screen
+      scrollEventThrottle={16}
+      automaticallyAdjustContentInsets
+      style={styles.screen}
+      backgroundColor={color.transparent}
+    >
+      {!recyclerSections ? (
+        <View style={styles.loaderContainer}>
+          <LottieView
+            autoPlay={true}
+            loop={true}
+            source={require("../../../assets/lotties/photo-loading.json")}
+          />
+          <Text style={styles.loadingText}>Gathering photos</Text>
+        </View>
+      ) : !recyclerSections?.length ? (
+        <Text style={styles.emptyText}>Gallery is empty!</Text>
+      ) : (
+        <>
+          <AssetList sections={recyclerSections} scrollY={scrollY} navigation={navigation} />
+        </>
+      )}
+    </Screen>
   )
 }

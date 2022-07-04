@@ -1,4 +1,3 @@
-import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState, useImperativeHandle } from "react"
 import {
   NativeSyntheticEvent,
   NativeScrollEvent,
@@ -6,14 +5,15 @@ import {
   ImageErrorEventData,
   ActivityIndicator
 } from "react-native"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Animated, {
   useSharedValue,
-  useAnimatedStyle,
   interpolate,
   scrollTo,
   runOnJS,
   useAnimatedReaction,
   Extrapolate,
+  SharedValue,
 } from "react-native-reanimated"
 import { DataProvider, RecyclerListView } from "fula-recyclerlistview"
 import { Constants } from "../../../theme/constants"
@@ -30,6 +30,7 @@ import GridLayoutProvider from "../grid-provider/gridLayoutProvider"
 import { LayoutTransitionRange, MIN_COLUMNS } from "../grid-provider/gridLayoutManager"
 import { ThumbScroll } from "../../index"
 
+import { StoryContainer } from "../../story"
 export interface Props {
   navigation: NativeStackNavigationProp<HomeNavigationParamList, HomeNavigationTypes>
   sections: RecyclerAssetListSection[]
@@ -144,11 +145,14 @@ const RecyclerAssetList = forwardRef<RecyclerAssetListHandler, Props>(({
     toggleSelection(section)
   }, [])
 
-  const onPress = useCallback((section: RecyclerAssetListSection) => {
-    if (!extendedState.selectionMode && section.type === ViewType.ASSET) {
-      navigation.push(AppNavigationNames.PhotoScreen, { section: section })
-    } else toggleSelection(section)
-  }, [extendedState.selectionMode])
+  const onPress = useCallback(
+    (section: RecyclerAssetListSection) => {
+      if (!extendedState.selectionMode && section.type === ViewType.ASSET) {
+        navigation.push(AppNavigationNames.PhotoScreen, { section: section })
+      } else toggleSelection(section)
+    },
+    [extendedState.selectionMode],
+  )
 
   const rowRenderer = useCallback(
     (
@@ -298,65 +302,42 @@ const RecyclerAssetList = forwardRef<RecyclerAssetListHandler, Props>(({
     }
   }
   return (
-    <View style={{ flex: 1 }} onLayout={(e) => {
-      setViewPortHeight(e.nativeEvent.layout.height)
-    }}>
-      <ThumbScroll
-        scrollY={scrollY}
-        hideTimeout={2000}
-        headerHeight={Constants.HeaderHeight}
-        footerHeight={Constants.TabBarHeight}
-        viewPortHeight={viewPortHeight}
-        layoutHeight={containerSize?.[currentColumns - MIN_COLUMNS] || viewPortHeight}
-        shouldIndicatorHide={false}
-        scrollRef={scrollRef}
-        showYearFilter={true}
-        sections={sections}
-        layoutProvider={gridLayoutProvider}
-      />
-      <RecyclerListView
-        ref={rclRef}
-        dataProvider={dataProvider}
-        extendedState={extendedState}
-        layoutProvider={gridLayoutProvider}
-
-        rowRenderer={rowRenderer}
-        externalScrollView={ExternalScrollView}
-        scrollViewProps={{
-          disableScrollViewPanResponder: false,
-          scrollRefExternal: scrollRef,
-          _onScrollExternal: scrollHandler,
-          onLayout: () => {
-            updateContainerSize();
-          }
-        }}
-        onVisibleIndicesChanged={(all = [], now, notNow) => {
-          const visibleIndexValue = all[Math.floor(all.length / 2)] || 0
-          if (!pinching.value && all && all.length) {
-            visibileIndices.value = [...all]
-            layoutTransitionRange.value = gridLayoutProvider
-              .getLayoutManager()
-              ?.getLayoutTransitionRangeForIndex(visibleIndexValue, numColumns.value)
-          }
-        }}
-        stopRenderingOnAnimation={pinching}
-        contentContainerStyle={{ paddingTop: 70 }}
-        renderItemContainer={renderItemContainer}
-        renderContentContainer={(props, children) => {
-          return (
-            <Animated.View {...props} style={[props.style, containerStyle]} onLayout={() => {
-              if (!pinching.value) {
-                updateContainerSize()
-              }
-            }}>
+    <RecyclerListView
+      ref={rclRef}
+      dataProvider={dataProvider}
+      extendedState={extendedState}
+      layoutProvider={gridLayoutProvider}
+      rowRenderer={rowRenderer}
+      externalScrollView={ExternalScrollView}
+      scrollViewProps={{
+        disableScrollViewPanResponder: false,
+        scrollRefExternal: scrollRef,
+        _onScrollExternal: scrollHandler,
+      }}
+      onVisibleIndicesChanged={(all = [], now, notNow) => {
+        const visibleIndexValue = all[Math.floor(all.length / 2)] || 0
+        if (!pinching.value && all && all.length) {
+          visibileIndices.value = [...all]
+          layoutTransitionRange.value = gridLayoutProvider
+            .getLayoutManager()
+            ?.getLayoutTransitionRangeForIndex(visibleIndexValue, numColumns.value)
+        }
+      }}
+      stopRenderingOnAnimation={pinching}
+      contentContainerStyle={{ paddingTop: Constants.HeaderHeight }}
+      renderItemContainer={renderItemContainer}
+      renderContentContainer={(props, children) => {
+        return (
+          <>
+            <StoryContainer />
+            <Animated.View {...props} style={[props.style, containerStyle]}>
               {children}
             </Animated.View>
-          )
-        }}
-        renderFooter={renderFooter}
-        {...extras}
-      />
-    </View>
+          </>
+        )
+      }}
+      {...extras}
+    />
   )
 })
 export default RecyclerAssetList
